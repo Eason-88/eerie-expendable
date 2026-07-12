@@ -1,0 +1,48 @@
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Editors / IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.cursor/
+
+# Env & secrets
+.env
+.env.*
+!.env.example
+*.pem
+credentials.json
+
+# Python / FastAPI
+server/.venv/
+server/venv/
+**/__pycache__/
+**/*.py[cod]
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+server/*.egg-info/
+server/dist/
+server/build/
+
+# Node / Cocos
+node_modules/
+client/library/
+client/temp/
+client/local/
+client/build/
+client/native/
+**/package-lock.json
+!**/package.json
+
+# Logs & caches
+*.log
+npm-debug.log*
+.cache/
+
+# WeChat mini game local
+project.private.config.json
