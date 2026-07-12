@@ -2,30 +2,28 @@
 
 本目录目标工程：**诡异弃子 / Eerie Expendable** 微信小游戏客户端。
 
-## 当前状态（阶段 0）
+## 当前状态
 
-| 内容 | 路径 | 说明 |
+| 阶段 | 内容 | 路径 |
 |------|------|------|
-| Cocos 脚本脚手架 | `assets/scripts/` | 跟拍相机、移动、雾、平台适配、Boot |
-| 浏览器临时预览 | `web-preview/index.html` | 本机未装 Cocos 时，用 Three.js 验收伪 3D 行走 |
-| 正式 Cocos 工程 | 待用编辑器创建 | 见下方步骤 |
+| 0 | 跟拍相机 / 平台适配 / Boot | `assets/scripts/` |
+| 1 | 战斗测试关（可通关） | `web-preview/` |
+| 1 | Cocos 战斗脚本脚手架 | `assets/scripts/combat|level|ui|core` |
 
-> `web-preview` 仅用于阶段 0 手感/镜头验收，**不是**最终客户端。正式玩法以 Cocos 为准。
+> `web-preview` 用于在未安装 Cocos 时验收手感；正式客户端仍以 Cocos 为准。
 
-## 本机安装 Cocos 后
+## 阶段 1 快速玩
 
-1. 安装 [Cocos Creator 3.8+](https://www.cocos.com/creator-download)（建议 3.8.x）。
-2. 用编辑器 **新建 3D 空项目**，工程路径选本仓库的 `client/`（或新建后把 `assets/scripts` 拷入其 `assets/scripts`）。
-3. 新建场景 `assets/scenes/boot.scene`：
-   - 地面 Plane + 若干树占位
-   - Capsule / 空节点挂 `PlayerMotor`
-   - Camera 挂 `ThirdPersonCamera`，`target` 指角色
-   - 场景挂 `ForestFogSetup`、`BootStrap`
-4. 点击 **预览 / Preview in Browser**。
-5. 确认能 WASD 行走、相机跟拍、有雾；控制台可见 API health（需先启后端）。
+```powershell
+cd client\web-preview
+python -m http.server 5173
+```
 
-## 平台适配
+打开 http://127.0.0.1:5173 — 详见 [`docs/阶段1-验收说明.md`](../docs/阶段1-验收说明.md)。
 
-- Web：`platform/web.ts` → API `http://127.0.0.1:8000`
-- 微信：`platform/wechat.ts`（阶段 3 接 `wx`）
-- 启动时调用 `bootstrapPlatform()`（已在 `BootStrap`）
+## Cocos 正式工程
+
+1. 安装 Cocos Creator 3.8+。
+2. 新建 3D 项目到本目录（或拷入 `assets/scripts`）。
+3. 挂载：`PlayerMotor`、`WeaponController`、`CoverUser`、`EnemyAI`、`LevelStateMachine`、`CombatHud`、`ThirdPersonCamera`、`BootStrap`。
+4. Preview in Browser。

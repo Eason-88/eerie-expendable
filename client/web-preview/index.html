@@ -3,180 +3,34 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>诡异弃子 — Phase 0 Camera Preview</title>
-    <style>
-      html,
-      body {
-        margin: 0;
-        height: 100%;
-        overflow: hidden;
-        background: #0b1210;
-        font-family: "Segoe UI", "PingFang SC", sans-serif;
-        color: #d7e0d8;
-      }
-      canvas {
-        display: block;
-      }
-      #hud {
-        position: fixed;
-        left: 16px;
-        bottom: 16px;
-        padding: 10px 14px;
-        background: rgba(8, 14, 12, 0.55);
-        border: 1px solid rgba(180, 200, 180, 0.2);
-        border-radius: 8px;
-        font-size: 13px;
-        line-height: 1.5;
-        pointer-events: none;
-      }
-      #hud strong {
-        color: #9fefb0;
-      }
-    </style>
+    <title>诡异弃子 — Phase 1 Combat Arena</title>
+    <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
+    <div id="crosshair"></div>
     <div id="hud">
-      <div><strong>Phase 0</strong> · 伪 3D 跟拍预览（Three.js 临时桥接）</div>
-      <div>WASD / 方向键移动 · 参考图：view-pseudo-3d.png</div>
-      <div id="api">API: …</div>
+      <div class="row title"><strong>Phase 1</strong> · 战斗测试关</div>
+      <div class="row">状态：<span id="phase">Explore</span></div>
+      <div class="row">HP <span id="hp-bar"><i id="hp-fill"></i></span> <span id="hp-text">100</span></div>
+      <div class="row">弹药 <span id="ammo">30 / ∞</span></div>
+      <div class="row">敌人 <span id="enemies">0</span></div>
+      <div class="row hint">WASD 移动 · 鼠标瞄准 · 左键射击 · E 掩体</div>
+      <div class="row" id="api">API: …</div>
+      <div class="row msg" id="msg"></div>
+    </div>
+    <div id="hit-vignette"></div>
+    <div id="win-overlay" class="hidden">
+      <h1>清剿完成</h1>
+      <p>阶段 1 验收通过 · LevelState → Win</p>
+      <button id="restart">再来一波</button>
     </div>
     <script type="importmap">
       {
         "imports": {
-          "three": "https://unpkg.com/three@0.170.0/build/three.module.js",
-          "three/addons/": "https://unpkg.com/three@0.170.0/examples/jsm/"
+          "three": "https://unpkg.com/three@0.170.0/build/three.module.js"
         }
       }
     </script>
-    <script type="module">
-      import * as THREE from "three";
-
-      const apiEl = document.getElementById("api");
-      fetch("http://127.0.0.1:8000/health")
-        .then((r) => r.json())
-        .then((data) => {
-          apiEl.textContent = `API: ${data.status} · ${data.app}`;
-        })
-        .catch(() => {
-          apiEl.textContent = "API: offline（先启动 server）";
-        });
-
-      const scene = new THREE.Scene();
-      scene.background = new THREE.Color(0x6f8478);
-      scene.fog = new THREE.Fog(0x6f8478, 8, 48);
-
-      const camera = new THREE.PerspectiveCamera(
-        55,
-        window.innerWidth / window.innerHeight,
-        0.1,
-        200
-      );
-
-      const renderer = new THREE.WebGLRenderer({ antialias: true });
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.shadowMap.enabled = true;
-      document.body.appendChild(renderer.domElement);
-
-      const hemi = new THREE.HemisphereLight(0xcfe0d4, 0x3a4a3c, 0.85);
-      scene.add(hemi);
-      const sun = new THREE.DirectionalLight(0xfff2d6, 0.75);
-      sun.position.set(12, 22, 8);
-      sun.castShadow = true;
-      scene.add(sun);
-
-      const ground = new THREE.Mesh(
-        new THREE.PlaneGeometry(80, 80),
-        new THREE.MeshStandardMaterial({ color: 0x3f5a42, roughness: 0.9 })
-      );
-      ground.rotation.x = -Math.PI / 2;
-      ground.receiveShadow = true;
-      scene.add(ground);
-
-      // Simple tree stubs
-      for (let i = 0; i < 40; i++) {
-        const trunk = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.18, 0.25, 2.4, 6),
-          new THREE.MeshStandardMaterial({ color: 0x4a3426 })
-        );
-        const crown = new THREE.Mesh(
-          new THREE.ConeGeometry(1.2, 2.8, 7),
-          new THREE.MeshStandardMaterial({ color: 0x2f5238 })
-        );
-        const x = (Math.random() - 0.5) * 70;
-        const z = (Math.random() - 0.5) * 70;
-        if (Math.hypot(x, z) < 4) continue;
-        trunk.position.set(x, 1.2, z);
-        crown.position.set(x, 3.2, z);
-        trunk.castShadow = crown.castShadow = true;
-        scene.add(trunk, crown);
-      }
-
-      // Capsule player
-      const player = new THREE.Group();
-      const body = new THREE.Mesh(
-        new THREE.CapsuleGeometry(0.35, 0.9, 4, 8),
-        new THREE.MeshStandardMaterial({ color: 0x1c2420 })
-      );
-      body.position.y = 1.0;
-      body.castShadow = true;
-      player.add(body);
-      scene.add(player);
-
-      const keys = new Set();
-      window.addEventListener("keydown", (e) => keys.add(e.code));
-      window.addEventListener("keyup", (e) => keys.delete(e.code));
-
-      const moveSpeed = 4.5;
-      const followDistance = 8;
-      const camHeight = 3.2;
-      const lookAtHeight = 1.4;
-      const camPos = new THREE.Vector3(0, camHeight, followDistance);
-      const look = new THREE.Vector3();
-      const forward = new THREE.Vector3(0, 0, -1);
-      const wish = new THREE.Vector3();
-      const clock = new THREE.Clock();
-
-      function animate() {
-        const dt = Math.min(clock.getDelta(), 0.05);
-        wish.set(0, 0, 0);
-        if (keys.has("KeyW") || keys.has("ArrowUp")) wish.z -= 1;
-        if (keys.has("KeyS") || keys.has("ArrowDown")) wish.z += 1;
-        if (keys.has("KeyA") || keys.has("ArrowLeft")) wish.x -= 1;
-        if (keys.has("KeyD") || keys.has("ArrowRight")) wish.x += 1;
-
-        if (wish.lengthSq() > 0) {
-          wish.normalize();
-          player.position.x += wish.x * moveSpeed * dt;
-          player.position.z += wish.z * moveSpeed * dt;
-          const yaw = Math.atan2(wish.x, wish.z);
-          player.rotation.y = yaw;
-          forward.set(Math.sin(yaw), 0, Math.cos(yaw));
-        } else {
-          forward.set(Math.sin(player.rotation.y), 0, Math.cos(player.rotation.y));
-        }
-
-        const desired = new THREE.Vector3(
-          player.position.x - forward.x * followDistance,
-          player.position.y + camHeight,
-          player.position.z - forward.z * followDistance
-        );
-        camPos.lerp(desired, 1 - Math.exp(-8 * dt));
-        camera.position.copy(camPos);
-        look.set(player.position.x, player.position.y + lookAtHeight, player.position.z);
-        camera.lookAt(look);
-
-        renderer.render(scene, camera);
-        requestAnimationFrame(animate);
-      }
-
-      window.addEventListener("resize", () => {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-      });
-
-      animate();
-    </script>
+    <script type="module" src="./src/main.js"></script>
   </body>
 </html>

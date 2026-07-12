@@ -23,14 +23,15 @@ uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 
 探活：http://127.0.0.1:8000/health
 
-**伪 3D 镜头预览（临时）**
+**伪 3D / 战斗预览（阶段 0–1）**
 
 ```powershell
 cd client\web-preview
 python -m http.server 5173
 ```
 
-打开：http://127.0.0.1:5173 （WASD 移动）
+打开：http://127.0.0.1:5173  
+阶段 1：WASD + 鼠标瞄准射击，E 掩体，清空 5 名敌人即胜利。
 
 正式 Cocos 工程步骤见 [`client/README.md`](client/README.md)。
 
@@ -38,6 +39,7 @@ python -m http.server 5173
 
 - [开发计划](docs/开发计划.md)
 - [阶段 0 验收说明](docs/阶段0-验收说明.md)
+- [阶段 1 验收说明](docs/阶段1-验收说明.md)
 
 ## 视觉参考
 
