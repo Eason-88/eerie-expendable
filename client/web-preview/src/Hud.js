@@ -1,3 +1,5 @@
+import { audio } from "./AudioDirector.js";
+
 export class Hud {
   constructor() {
     this.phaseEl = document.getElementById("phase");
@@ -71,9 +73,11 @@ export class Hud {
     window.setTimeout(() => this.vignette.classList.remove("active"), 120);
   }
 
-  message(text, duration = 2.4) {
+  /** Bottom-left progress toast (text only; VO gated by audio.progressVoEnabled). */
+  message(text, duration = 2.4, { speak = false } = {}) {
     this.msgEl.textContent = text;
     this._msgTimer = duration;
+    if (speak && text) audio.announce(text);
   }
 
   update(dt) {

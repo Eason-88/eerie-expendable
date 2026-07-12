@@ -5,6 +5,9 @@ import { createCoverSpots } from "./Cover.js";
 import { spawnEnemyWave } from "./Enemy.js";
 import { CombatSystem } from "./Combat.js";
 import { Player } from "./Player.js";
+import { preloadTacticalModels } from "./CharacterFactory.js";
+
+await preloadTacticalModels();
 
 const hud = new Hud();
 const level = new LevelStateMachine((phase) => {
@@ -22,8 +25,8 @@ fetch("http://127.0.0.1:8000/health")
   });
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x6f8478);
-scene.fog = new THREE.Fog(0x6f8478, 10, 55);
+scene.background = new THREE.Color(0x7a8a82);
+scene.fog = new THREE.Fog(0x9aa89e, 8, 40);
 
 const camera = new THREE.PerspectiveCamera(
   55,
@@ -109,15 +112,33 @@ const camPos = new THREE.Vector3();
 const look = new THREE.Vector3();
 const clock = new THREE.Clock();
 
-function enemyFire(enemy, dirToPlayer) {
-  const origin = enemy.position.clone();
-  origin.y += 1.4;
-  const dir = dirToPlayer.clone();
-  dir.y = 0.02;
-  dir.x += (Math.random() - 0.5) * enemy.aimError * 0.08;
-  dir.z += (Math.random() - 0.5) * enemy.aimError * 0.08;
+function enemyFire(enemy) {
+  const origin = new THREE.Vector3(
+    enemy.position.x,
+    enemy.position.y + 1.35,
+    enemy.position.z
+  );
+  if (enemy.muzzleObj) {
+    enemy.root.updateMatrixWorld(true);
+    enemy.muzzleObj.getWorldPosition(origin);
+    if (origin.distanceTo(enemy.position) > 3.5 || origin.y < 0.4) {
+      origin.set(enemy.position.x, enemy.position.y + 1.35, enemy.position.z);
+    }
+  }
+  const target = new THREE.Vector3(
+    player.position.x,
+    player.position.y + 1.2,
+    player.position.z
+  );
+  const dir = target.sub(origin);
+  if (dir.lengthSq() < 1e-6) return;
   dir.normalize();
-  combat.spawnTracer(origin, dir, 70, 8, false);
+  const spread = enemy.aimError * 0.05;
+  dir.x += (Math.random() - 0.5) * spread;
+  dir.y += (Math.random() - 0.5) * spread * 0.5;
+  dir.z += (Math.random() - 0.5) * spread;
+  dir.normalize();
+  combat.spawnTracer(origin, dir, 78, 12, false);
 }
 
 function updateCamera(dt) {
@@ -130,6 +151,12 @@ function updateCamera(dt) {
     player.position.z - forward.z * 7.5
   );
   camPos.lerp(desired, 1 - Math.exp(-8 * dt));
+  const shake = player.cameraShake || 0;
+  if (shake > 0) {
+    camPos.x += (Math.random() - 0.5) * shake * 0.35;
+    camPos.y += (Math.random() - 0.5) * shake * 0.25;
+    camPos.z += (Math.random() - 0.5) * shake * 0.35;
+  }
   camera.position.copy(camPos);
   look.set(
     player.position.x + forward.x * 4,

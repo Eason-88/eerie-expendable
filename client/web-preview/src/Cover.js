@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { createWoodCrate } from "./CharacterFactory.js";
 
 export function createCoverSpots(scene, layouts) {
   const covers = [];
@@ -11,14 +12,20 @@ export function createCoverSpots(scene, layouts) {
   ];
 
   for (const layout of layouts ?? defaultLayouts) {
-    const mesh = new THREE.Mesh(
+    const crate = createWoodCrate(layout.w, layout.h, layout.d);
+    crate.position.set(layout.x, layout.h / 2, layout.z);
+    scene.add(crate);
+    const mesh = crate.userData.solidMesh;
+    mesh.position.copy(crate.position);
+
+    // Keep a world-aligned invisible collider proxy at crate position for raycasts
+    // (solidMesh is child of group; use group for visuals, mesh for collision list)
+    const collider = new THREE.Mesh(
       new THREE.BoxGeometry(layout.w, layout.h, layout.d),
-      new THREE.MeshStandardMaterial({ color: 0x6b4e32, roughness: 0.85 })
+      new THREE.MeshBasicMaterial({ visible: false })
     );
-    mesh.position.set(layout.x, layout.h / 2, layout.z);
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    scene.add(mesh);
+    collider.position.set(layout.x, layout.h / 2, layout.z);
+    scene.add(collider);
 
     const interactPos = new THREE.Vector3(
       layout.x,
@@ -27,7 +34,8 @@ export function createCoverSpots(scene, layouts) {
     );
     const firePos = new THREE.Vector3(layout.x, layout.h + 0.15, layout.z);
     covers.push({
-      mesh,
+      mesh: collider,
+      visual: crate,
       interactPos,
       firePos,
       radius: layout.radius ?? 1.6,

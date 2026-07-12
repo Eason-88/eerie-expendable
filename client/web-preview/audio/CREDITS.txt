@@ -1,0 +1,7 @@
+# Audio credits
+
+Gunshots (`gunshot_a.wav` / `gunshot_b.wav` / `gunshot_c.wav`):
+- Source: Free Firearms SFX Library (Kickstarter / Ben Jaszczak), AR-15 prepared tracks `D_32P` / `D_24P`
+- Mirror: https://github.com/buddingmonkey/FreeFirearmsSFXLibrary
+- License: CC0-1.0 (public domain)
+- Note: AR-15 / M4 platform, same family as M4A1 (5.56)

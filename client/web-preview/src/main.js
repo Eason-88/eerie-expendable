@@ -10,6 +10,11 @@ import { HorrorEvents, HORROR_CONFIG } from "./Horror.js";
 import { SniperEncounter } from "./Sniper.js";
 import { WorldCollision } from "./Collision.js";
 import { SaveService } from "./SaveService.js";
+import { audio } from "./AudioDirector.js";
+import { preloadTacticalModels } from "./CharacterFactory.js";
+import { buildReferenceForest } from "./ForestEnvironment.js";
+
+await preloadTacticalModels();
 
 const hud = new Hud();
 const level = new LevelStateMachine((phase) => {
@@ -19,7 +24,8 @@ const level = new LevelStateMachine((phase) => {
 
 const radio = new Radio({
   onSubtitle: (line) => hud.setRadio(line),
-  onBlockedTransmit: (msg) => hud.message(msg),
+  onBlockedTransmit: (msg) => hud.message(msg, 2.4, { speak: false }),
+  onSpeak: (speaker, text) => audio.radioVo(speaker, text),
 });
 
 const saveService = new SaveService("http://127.0.0.1:8000");
@@ -67,59 +73,29 @@ saveService
   });
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x5a6b60);
-scene.fog = new THREE.Fog(0x5a6b60, 12, 58);
+buildReferenceForest(scene);
 
 const camera = new THREE.PerspectiveCamera(
   55,
   window.innerWidth / window.innerHeight,
   0.1,
-  220
+  160
 );
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.85;
 document.body.appendChild(renderer.domElement);
-
-scene.add(new THREE.HemisphereLight(0xcfe0d4, 0x2a332c, 0.85));
-const sun = new THREE.DirectionalLight(0xffe6c8, 0.7);
-sun.position.set(16, 26, 8);
-sun.castShadow = true;
-scene.add(sun);
-
-const ground = new THREE.Mesh(
-  new THREE.PlaneGeometry(100, 120),
-  new THREE.MeshStandardMaterial({ color: 0x3a5240, roughness: 0.9 })
-);
-ground.rotation.x = -Math.PI / 2;
-ground.receiveShadow = true;
-scene.add(ground);
-
-for (let i = 0; i < 55; i++) {
-  const x = (Math.random() - 0.5) * 90;
-  const z = -40 + Math.random() * 70;
-  if (Math.abs(x) < 5 && z < 8 && z > -38) continue;
-  const trunk = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.18, 0.25, 2.4, 6),
-    new THREE.MeshStandardMaterial({ color: 0x4a3426 })
-  );
-  const crown = new THREE.Mesh(
-    new THREE.ConeGeometry(1.15, 2.7, 7),
-    new THREE.MeshStandardMaterial({ color: 0x2c4a34 })
-  );
-  trunk.position.set(x, 1.2, z);
-  crown.position.set(x, 3.15, z);
-  trunk.castShadow = crown.castShadow = true;
-  scene.add(trunk, crown);
-}
 
 const baseCenter = new THREE.Vector3(0, 0, -40);
 const worldCollision = new WorldCollision();
 {
   const hut = new THREE.Mesh(
     new THREE.BoxGeometry(8, 3, 6),
-    new THREE.MeshStandardMaterial({ color: 0x4a4038 })
+    new THREE.MeshStandardMaterial({ color: 0x4a4038, roughness: 0.92 })
   );
   hut.position.set(baseCenter.x, 1.5, baseCenter.z);
   scene.add(hut);
@@ -191,15 +167,27 @@ function clearEnemies() {
   hud.setEnemies(0, 0);
 }
 
-function enemyFire(enemy, dirToPlayer) {
-  const origin = enemy.position.clone();
-  origin.y += 1.4;
-  const dir = dirToPlayer.clone();
-  dir.y = 0.02;
-  dir.x += (Math.random() - 0.5) * enemy.aimError * 0.08;
-  dir.z += (Math.random() - 0.5) * enemy.aimError * 0.08;
+function enemyFire(enemy) {
+  // Prefer chest aim so shots aren't spawned inside cover AABBs near a bad muzzle
+  const origin = new THREE.Vector3(
+    enemy.position.x,
+    enemy.position.y + 1.4,
+    enemy.position.z
+  );
+  const target = new THREE.Vector3(
+    player.position.x,
+    player.position.y + 1.25,
+    player.position.z
+  );
+  const dir = target.sub(origin);
+  if (dir.lengthSq() < 1e-6) return;
   dir.normalize();
-  combat.spawnTracer(origin, dir, 70, 8, false);
+  const spread = (enemy.aimError ?? 0.2) * 0.045;
+  dir.x += (Math.random() - 0.5) * spread;
+  dir.y += (Math.random() - 0.5) * spread * 0.4;
+  dir.z += (Math.random() - 0.5) * spread;
+  dir.normalize();
+  combat.spawnTracer(origin, dir, 82, 14, false);
 }
 
 function spawnBetrayers() {
@@ -260,7 +248,7 @@ function startCampaign() {
   hud.setObjective("调查并驱散林中异象（开枪 / 靠近）");
   hud.setEnemies(0, 0);
   hud.setRadio(null);
-  hud.message("对讲机只能接收 · 云存档将在检查点自动同步");
+  hud.message("入场：对讲机只能接收 · 向北深入森林");
   hud.showWin(false);
   void persistCheckpoint("intro");
 }
@@ -284,17 +272,25 @@ function updateCamera(dt) {
   const forward = player.getAimForward();
   forward.y = 0;
   if (forward.lengthSq() > 0) forward.normalize();
+  // Over-the-shoulder (right) like view-pseudo-3d.png
+  const right = new THREE.Vector3(-forward.z, 0, forward.x);
   const desired = new THREE.Vector3(
-    player.position.x - forward.x * 7.5,
-    player.position.y + (player.inCover ? 2.6 : 3.1),
-    player.position.z - forward.z * 7.5
+    player.position.x - forward.x * 6.2 + right.x * 1.15,
+    player.position.y + (player.inCover ? 2.45 : 2.85),
+    player.position.z - forward.z * 6.2 + right.z * 1.15
   );
   camPos.lerp(desired, 1 - Math.exp(-8 * dt));
+  const shake = player.cameraShake || 0;
+  if (shake > 0) {
+    camPos.x += (Math.random() - 0.5) * shake * 0.35;
+    camPos.y += (Math.random() - 0.5) * shake * 0.25;
+    camPos.z += (Math.random() - 0.5) * shake * 0.35;
+  }
   camera.position.copy(camPos);
   look.set(
-    player.position.x + forward.x * 4,
-    player.position.y + 1.35 - player.aimPitch * 2.5,
-    player.position.z + forward.z * 4
+    player.position.x + forward.x * 5.5 + right.x * 0.35,
+    player.position.y + 1.45 - player.aimPitch * 2.2,
+    player.position.z + forward.z * 5.5 + right.z * 0.35
   );
   camera.lookAt(look);
 }
@@ -392,5 +388,5 @@ window.addEventListener("resize", () => {
 });
 
 hud.setRadio(null);
-hud.message("点击画面锁定鼠标 · 向北深入森林");
+hud.message("点击画面锁定鼠标 · 向北深入森林", 3, { speak: false });
 animate();

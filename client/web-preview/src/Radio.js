@@ -1,8 +1,6 @@
-import * as THREE from "three";
-
 /** Receive-only radio: can show HQ lines, cannot transmit. */
 export class Radio {
-  constructor({ onSubtitle, onBlockedTransmit }) {
+  constructor({ onSubtitle, onBlockedTransmit, onSpeak }) {
     this.canTransmit = false;
     this._queue = [];
     this._current = null;
@@ -12,6 +10,7 @@ export class Radio {
     this._enabledNag = true;
     this._onSubtitle = onSubtitle;
     this._onBlockedTransmit = onBlockedTransmit;
+    this._onSpeak = onSpeak;
     this._seen = new Set();
   }
 
@@ -64,5 +63,6 @@ export class Radio {
     this._current = this._queue.shift();
     this._timer = this._current.duration;
     this._onSubtitle?.(this._current);
+    this._onSpeak?.(this._current.speaker, this._current.text);
   }
 }

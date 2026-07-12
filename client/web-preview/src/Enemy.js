@@ -1,4 +1,6 @@
 import * as THREE from "three";
+import { createTacticalSoldier, applyAttackRiflePose } from "./CharacterFactory.js";
+import { audio } from "./AudioDirector.js";
 
 const STATE = Object.freeze({
   Idle: "Idle",
@@ -9,7 +11,7 @@ const STATE = Object.freeze({
 });
 
 export class Enemy {
-  constructor(scene, position, playerRef) {
+  constructor(scene, position, playerRef, kind = "enemy") {
     this.scene = scene;
     this.playerRef = playerRef;
     this.maxHp = 40;
@@ -19,31 +21,30 @@ export class Enemy {
     this.shootRange = 16;
     this.shootCooldown = 0;
     this.fireInterval = 1.15;
-    this.aimError = 0.55;
+    this.aimError = 0.22;
     this.flashT = 0;
     this.moveSpeed = 0;
     this.advanceEnabled = false;
     this.holdDistance = 7;
-    this.baseColor = 0x5a2e2e;
     this._spawnDelay = 0;
+    this.kind = kind;
 
-    this.root = new THREE.Group();
+    const built = createTacticalSoldier(kind);
+    this.root = built.root;
     this.root.position.copy(position);
-
-    this.body = new THREE.Mesh(
-      new THREE.CapsuleGeometry(0.35, 0.85, 4, 8),
-      new THREE.MeshStandardMaterial({ color: this.baseColor })
-    );
-    this.body.position.y = 1.0;
-    this.body.castShadow = true;
-    this.root.add(this.body);
-
-    const head = new THREE.Mesh(
-      new THREE.SphereGeometry(0.22, 10, 10),
-      new THREE.MeshStandardMaterial({ color: 0x3a2222 })
-    );
-    head.position.y = 1.85;
-    this.root.add(head);
+    this.body = built.body;
+    this.muzzleObj = built.muzzle;
+    this.rifle = built.rifle;
+    this.anim = built.anim ?? null;
+    this.model = built.model ?? null;
+    this.weaponMount = built.weaponMount ?? null;
+    this.fromGltf = Boolean(built.fromGltf);
+    this._baseMats = [];
+    this.root.traverse((o) => {
+      if (o.isMesh && o.material?.color && o.name !== "hitProxy") {
+        this._baseMats.push({ mesh: o, color: o.material.color.clone() });
+      }
+    });
 
     scene.add(this.root);
   }
@@ -56,17 +57,19 @@ export class Enemy {
     return this.root.position;
   }
 
-  setTeamLook(colorHex) {
-    this.baseColor = colorHex;
-    this.body.material.color.setHex(colorHex);
+  setTeamLook() {
+    // visual already set by kind; kept for API compat
   }
 
   takeDamage(amount) {
     if (!this.alive) return false;
     this.hp -= amount;
     this.flashT = 0.12;
-    this.body.material.color.setHex(0xff8866);
+    for (const entry of this._baseMats) {
+      entry.mesh.material.color.setHex(0xff8866);
+    }
     this.state = STATE.Alert;
+    audio.playHit();
     if (this.hp <= 0) {
       this.die();
       return true;
@@ -76,11 +79,15 @@ export class Enemy {
 
   die() {
     this.state = STATE.Dead;
+    this.anim?.set("Idle");
     this.root.rotation.z = Math.PI / 2;
-    this.root.position.y = 0.35;
-    this.body.material.color.setHex(0x2a1818);
-    this.body.material.transparent = true;
-    this.body.material.opacity = 0.55;
+    this.root.position.y = 0.2;
+    for (const entry of this._baseMats) {
+      if (entry.mesh.name === "hitProxy") continue;
+      entry.mesh.material.transparent = true;
+      entry.mesh.material.opacity = 0.55;
+      entry.mesh.material.color.setHex(0x2a1818);
+    }
   }
 
   update(dt, onShootPlayer, worldCollision = null) {
@@ -88,7 +95,6 @@ export class Enemy {
 
     if (this._spawnDelay > 0) {
       this._spawnDelay -= dt;
-      // Still visible while waiting — they just hold, then start walking
       if (this._spawnDelay > 0) {
         const player = this.playerRef();
         if (player) {
@@ -105,7 +111,9 @@ export class Enemy {
     if (this.flashT > 0) {
       this.flashT -= dt;
       if (this.flashT <= 0) {
-        this.body.material.color.setHex(this.baseColor);
+        for (const entry of this._baseMats) {
+          entry.mesh.material.color.copy(entry.color);
+        }
       }
     }
 
@@ -117,12 +125,21 @@ export class Enemy {
     toPlayer.y = 0;
     if (toPlayer.lengthSq() > 0) {
       toPlayer.normalize();
-      const yaw = Math.atan2(toPlayer.x, toPlayer.z);
-      this.root.rotation.y = yaw;
+      this.root.rotation.y = Math.atan2(toPlayer.x, toPlayer.z);
     }
 
-    // Slow advance toward player (no teleport)
+    // Hip-fire pitch toward player's chest
+    if (this.weaponMount && player) {
+      const dx = player.position.x - this.position.x;
+      const dy = player.position.y + 1.15 - (this.position.y + 1.12);
+      const dz = player.position.z - this.position.z;
+      const horiz = Math.hypot(dx, dz) || 1;
+      this.weaponMount.rotation.x = -Math.atan2(dy, horiz);
+    }
+
+    let advancing = false;
     if (this.advanceEnabled && this.moveSpeed > 0 && dist > this.holdDistance) {
+      advancing = true;
       this.state = STATE.Advance;
       const step = Math.min(this.moveSpeed * dt, dist - this.holdDistance);
       const nextX = this.root.position.x + toPlayer.x * step;
@@ -132,21 +149,30 @@ export class Enemy {
         : { x: nextX, z: nextZ };
       this.root.position.x = resolved.x;
       this.root.position.z = resolved.z;
+      this.anim?.set("Walk");
     } else if (dist < this.shootRange) {
       this.state = STATE.Shoot;
+      this.anim?.set("Idle");
     } else if (dist < this.alertRange) {
       this.state = STATE.Alert;
+      this.anim?.set("Idle");
     } else if (!this.advanceEnabled) {
       this.state = STATE.Idle;
+      this.anim?.set("Idle");
     }
+
+    this.anim?.update(dt);
+    if (this.fromGltf) applyAttackRiflePose(this.model);
 
     this.shootCooldown = Math.max(0, this.shootCooldown - dt);
     const canShoot =
       this.state === STATE.Shoot ||
-      (this.advanceEnabled && dist <= this.shootRange);
+      (this.advanceEnabled && dist <= this.shootRange) ||
+      advancing;
     if (canShoot && this.shootCooldown <= 0 && dist <= this.shootRange) {
       this.shootCooldown = this.fireInterval;
-      onShootPlayer?.(this, toPlayer);
+      onShootPlayer?.(this);
+      audio.playGunshot();
     }
   }
 }
@@ -164,25 +190,21 @@ export function spawnEnemyWave(scene, playerRef, count = 5) {
   for (let i = 0; i < count; i++) {
     const [x, z] = spots[i % spots.length];
     const jitter = (Math.random() - 0.5) * 1.5;
-    enemies.push(new Enemy(scene, new THREE.Vector3(x + jitter, 0, z + jitter), playerRef));
+    enemies.push(
+      new Enemy(scene, new THREE.Vector3(x + jitter, 0, z + jitter), playerRef, "enemy")
+    );
   }
   return enemies;
 }
 
-/**
- * Spawn former allies south of the base (player entry direction)
- * and let them walk in slowly.
- */
 export function spawnBetrayerSquad(scene, playerRef, entryHintPos) {
   const enemies = [];
-  // Entry corridor is from the south (larger Z → smaller Z).
   const baseZ = Math.min(entryHintPos?.z ?? -30, -28) + 8;
   const lanes = [-5.5, -3, -0.5, 2, 4.5, 7];
   for (let i = 0; i < lanes.length; i++) {
     const x = lanes[i] + (Math.random() - 0.5) * 0.8;
     const z = baseZ + i * 1.4 + Math.random() * 1.2;
-    const e = new Enemy(scene, new THREE.Vector3(x, 0, z), playerRef);
-    e.setTeamLook(0x2f4a3a);
+    const e = new Enemy(scene, new THREE.Vector3(x, 0, z), playerRef, "allyHostile");
     e.maxHp = 45;
     e.hp = 45;
     e.alertRange = 32;
@@ -191,7 +213,6 @@ export function spawnBetrayerSquad(scene, playerRef, entryHintPos) {
     e.moveSpeed = 1.55 + Math.random() * 0.35;
     e.advanceEnabled = true;
     e.holdDistance = 6.5 + Math.random() * 1.5;
-    // Stagger start so the line walks in as a squad, not a teleport dump
     e._spawnDelay = i * 0.45;
     enemies.push(e);
   }

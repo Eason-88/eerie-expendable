@@ -154,19 +154,47 @@ export class HorrorEvents {
   _buildTrain(pos) {
     const group = new THREE.Group();
     group.position.copy(pos);
-    const car = new THREE.Mesh(
-      new THREE.BoxGeometry(10, 3.2, 3.2),
-      new THREE.MeshStandardMaterial({ color: 0x4a5560, roughness: 0.85 })
-    );
-    car.position.y = 1.8;
+    const rust = new THREE.MeshStandardMaterial({
+      color: 0x5a4a40,
+      roughness: 0.92,
+      metalness: 0.35,
+    });
+    const dark = new THREE.MeshStandardMaterial({
+      color: 0x2a2826,
+      roughness: 0.88,
+      metalness: 0.25,
+    });
+    // Abandoned freight car silhouette (reference mid-ground wreck)
+    const car = new THREE.Mesh(new THREE.BoxGeometry(10.2, 3.0, 3.0), rust);
+    car.position.y = 1.7;
     car.castShadow = true;
+    car.receiveShadow = true;
     group.add(car);
-    const roof = new THREE.Mesh(
-      new THREE.BoxGeometry(10.2, 0.25, 3.4),
-      new THREE.MeshStandardMaterial({ color: 0x2f353c })
-    );
-    roof.position.y = 3.5;
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(10.6, 0.22, 3.3), dark);
+    roof.position.y = 3.3;
     group.add(roof);
+    // Weathered panels / ribs
+    for (let i = 0; i < 5; i++) {
+      const rib = new THREE.Mesh(new THREE.BoxGeometry(0.12, 2.6, 3.05), dark);
+      rib.position.set(-4 + i * 2, 1.7, 0);
+      group.add(rib);
+    }
+    // Bogie hint
+    for (const x of [-3.2, 3.2]) {
+      const wheel = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.45, 0.45, 0.35, 10),
+        dark
+      );
+      wheel.rotation.z = Math.PI / 2;
+      wheel.position.set(x, 0.45, 0.9);
+      group.add(wheel);
+      const wheel2 = wheel.clone();
+      wheel2.position.z = -0.9;
+      group.add(wheel2);
+    }
+    // Slight list into the fog
+    group.rotation.y = 0.12;
+    group.rotation.z = -0.03;
     this.scene.add(group);
     return group;
   }

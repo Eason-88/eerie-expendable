@@ -1,6 +1,18 @@
 import * as THREE from "three";
 import { ObjectPool } from "./ObjectPool.js";
 
+function closestPointOnSegment(a, b, p) {
+  const ab = new THREE.Vector3().subVectors(b, a);
+  const lenSq = ab.lengthSq();
+  if (lenSq < 1e-8) return a.clone();
+  const t = THREE.MathUtils.clamp(
+    new THREE.Vector3().subVectors(p, a).dot(ab) / lenSq,
+    0,
+    1
+  );
+  return a.clone().addScaledVector(ab, t);
+}
+
 export class CombatSystem {
   constructor(scene) {
     this.scene = scene;
@@ -116,52 +128,96 @@ export class CombatSystem {
         return;
       }
 
-      // Buildings via AABB (reliable) then leftover cover meshes
+      // Resolve nearest blocker among world / cover / characters
+      let blockDist = Infinity;
+      let blockPoint = null;
+      let blockNormal = new THREE.Vector3(0, 1, 0);
+
       const aabbHit = worldCollision?.raycast(prev, dir, dist + 0.05);
-      if (aabbHit) {
-        this.spawnDecal(aabbHit.point, aabbHit.normal);
-        this.spawnSparks(aabbHit.point);
-        bullet.mesh.visible = false;
-        this.bulletPool.release(bullet);
-        return;
+      if (aabbHit && aabbHit.distance < blockDist) {
+        blockDist = aabbHit.distance;
+        blockPoint = aabbHit.point;
+        blockNormal = aabbHit.normal;
       }
 
       if (coverMeshes.length) {
         for (const m of coverMeshes) m.updateMatrixWorld?.(true);
         const coverHits = this.raycaster.intersectObjects(coverMeshes, false);
-        if (coverHits.length && coverHits[0].distance <= dist + 0.05) {
-          this.spawnDecal(
-            coverHits[0].point,
-            coverHits[0].face?.normal ?? new THREE.Vector3(0, 0, 1)
-          );
-          this.spawnSparks(coverHits[0].point);
-          bullet.mesh.visible = false;
-          this.bulletPool.release(bullet);
-          return;
+        if (
+          coverHits.length &&
+          coverHits[0].distance <= dist + 0.05 &&
+          coverHits[0].distance < blockDist
+        ) {
+          blockDist = coverHits[0].distance;
+          blockPoint = coverHits[0].point;
+          blockNormal = coverHits[0].face?.normal ?? blockNormal;
         }
       }
 
       if (bullet.fromPlayer) {
         for (const enemy of enemies) {
           if (!enemy.alive) continue;
+          enemy.body.updateMatrixWorld(true);
           const hits = this.raycaster.intersectObject(enemy.body, false);
-          if (hits.length) {
+          if (
+            hits.length &&
+            hits[0].distance <= dist + 0.05 &&
+            hits[0].distance <= blockDist + 0.02
+          ) {
             enemy.takeDamage(bullet.damage);
             this.spawnSparks(hits[0].point);
-            this.spawnDecal(hits[0].point, hits[0].face?.normal ?? new THREE.Vector3(0, 1, 0));
+            this.spawnDecal(
+              hits[0].point,
+              hits[0].face?.normal ?? new THREE.Vector3(0, 1, 0)
+            );
             bullet.mesh.visible = false;
             this.bulletPool.release(bullet);
             return;
           }
         }
       } else if (player.hp > 0) {
+        player.body.updateMatrixWorld(true);
+        let hitPlayer = false;
+        let hitPt = null;
         const hits = this.raycaster.intersectObject(player.body, false);
-        if (hits.length) {
+        if (
+          hits.length &&
+          hits[0].distance <= dist + 0.05 &&
+          hits[0].distance <= blockDist + 0.05
+        ) {
+          hitPlayer = true;
+          hitPt = hits[0].point;
+        } else {
+          const torso = player.position.clone();
+          torso.y += 1.05;
+          const closest = closestPointOnSegment(prev, bullet.mesh.position, torso);
+          const dx = closest.x - torso.x;
+          const dz = closest.z - torso.z;
+          const dy = closest.y - torso.y;
+          const along = prev.distanceTo(closest);
+          if (
+            dx * dx + dz * dz < 0.6 * 0.6 &&
+            Math.abs(dy) < 1.15 &&
+            along <= blockDist + 0.05
+          ) {
+            hitPlayer = true;
+            hitPt = closest;
+          }
+        }
+        if (hitPlayer) {
           player.takeDamage(bullet.damage, hud);
-          this.spawnSparks(hits[0].point);
+          this.spawnSparks(hitPt);
           bullet.mesh.visible = false;
           this.bulletPool.release(bullet);
+          return;
         }
+      }
+
+      if (blockDist < Infinity && blockPoint) {
+        this.spawnDecal(blockPoint, blockNormal);
+        this.spawnSparks(blockPoint);
+        bullet.mesh.visible = false;
+        this.bulletPool.release(bullet);
       }
     });
 
