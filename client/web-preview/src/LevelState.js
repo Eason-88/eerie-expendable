@@ -1,4 +1,4 @@
-/** Level state machine shell: Explore / Sniper / Betrayal / Win */
+/** Level state machine: Explore → Sniper → Betrayal → Win */
 export const LevelPhase = Object.freeze({
   Explore: "Explore",
   Sniper: "Sniper",
@@ -21,7 +21,6 @@ export class LevelStateMachine {
     this._onChange?.(phase);
   }
 
-  /** Phase-1 test loop uses Explore → Win; Sniper/Betrayal reserved for phase 2. */
   notifyWaveCleared() {
     this.set(LevelPhase.Win);
   }

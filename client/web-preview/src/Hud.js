@@ -5,19 +5,27 @@ export class Hud {
     this.hpText = document.getElementById("hp-text");
     this.ammoEl = document.getElementById("ammo");
     this.enemiesEl = document.getElementById("enemies");
+    this.objEl = document.getElementById("objective");
     this.msgEl = document.getElementById("msg");
     this.apiEl = document.getElementById("api");
+    this.radioEl = document.getElementById("radio-line");
+    this.radioBox = document.getElementById("radio");
     this.vignette = document.getElementById("hit-vignette");
     this.winOverlay = document.getElementById("win-overlay");
+    this.enemiesRow = document.getElementById("enemies-row");
     this._msgTimer = 0;
   }
 
   setApi(text) {
-    this.apiEl.textContent = text;
+    if (this.apiEl) this.apiEl.textContent = text;
   }
 
   setPhase(phase) {
-    this.phaseEl.textContent = phase;
+    if (this.phaseEl) this.phaseEl.textContent = phase;
+  }
+
+  setObjective(text) {
+    if (this.objEl) this.objEl.textContent = text;
   }
 
   setHp(current, max) {
@@ -35,7 +43,22 @@ export class Hud {
   }
 
   setEnemies(alive, total) {
+    if (!this.enemiesEl) return;
     this.enemiesEl.textContent = `${alive} / ${total}`;
+    if (this.enemiesRow) {
+      this.enemiesRow.classList.toggle("hidden", total <= 0);
+    }
+  }
+
+  setRadio(line) {
+    if (!this.radioEl || !this.radioBox) return;
+    if (!line) {
+      this.radioBox.classList.add("idle");
+      this.radioEl.textContent = "频道静默 · 只能接收";
+      return;
+    }
+    this.radioBox.classList.remove("idle");
+    this.radioEl.textContent = `[${line.speaker}] ${line.text}`;
   }
 
   flashHit() {
@@ -43,7 +66,7 @@ export class Hud {
     window.setTimeout(() => this.vignette.classList.remove("active"), 120);
   }
 
-  message(text, duration = 2.2) {
+  message(text, duration = 2.4) {
     this.msgEl.textContent = text;
     this._msgTimer = duration;
   }

@@ -113,12 +113,59 @@ canvas {
   display: none;
 }
 
+#hud .hint a {
+  color: #9fefb0;
+  pointer-events: auto;
+}
+
+#enemies-row.hidden {
+  display: none;
+}
+
+#radio {
+  position: fixed;
+  left: 16px;
+  top: 16px;
+  right: 16px;
+  max-width: 520px;
+  padding: 10px 14px;
+  background: rgba(10, 16, 14, 0.72);
+  border: 1px solid rgba(120, 180, 140, 0.35);
+  border-radius: 8px;
+  z-index: 6;
+  pointer-events: none;
+}
+
+#radio.idle {
+  opacity: 0.72;
+  border-color: rgba(140, 150, 140, 0.25);
+}
+
+#radio .radio-tag {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: #8fd6a0;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+
+#radio-line {
+  font-size: 14px;
+  line-height: 1.45;
+  color: #e7f3ea;
+}
+
+.hidden-radio {
+  display: none !important;
+}
+
 #win-overlay h1 {
   margin: 0;
   font-size: 42px;
   letter-spacing: 0.08em;
   color: #b6f5c2;
 }
+
 
 #win-overlay p {
   margin: 0 0 12px;

@@ -2,6 +2,7 @@ import * as THREE from "three";
 
 const STATE = Object.freeze({
   Idle: "Idle",
+  Advance: "Advance",
   Alert: "Alert",
   Shoot: "Shoot",
   Dead: "Dead",
@@ -20,13 +21,18 @@ export class Enemy {
     this.fireInterval = 1.15;
     this.aimError = 0.55;
     this.flashT = 0;
+    this.moveSpeed = 0;
+    this.advanceEnabled = false;
+    this.holdDistance = 7;
+    this.baseColor = 0x5a2e2e;
+    this._spawnDelay = 0;
 
     this.root = new THREE.Group();
     this.root.position.copy(position);
 
     this.body = new THREE.Mesh(
       new THREE.CapsuleGeometry(0.35, 0.85, 4, 8),
-      new THREE.MeshStandardMaterial({ color: 0x5a2e2e })
+      new THREE.MeshStandardMaterial({ color: this.baseColor })
     );
     this.body.position.y = 1.0;
     this.body.castShadow = true;
@@ -48,6 +54,11 @@ export class Enemy {
 
   get position() {
     return this.root.position;
+  }
+
+  setTeamLook(colorHex) {
+    this.baseColor = colorHex;
+    this.body.material.color.setHex(colorHex);
   }
 
   takeDamage(amount) {
@@ -72,13 +83,29 @@ export class Enemy {
     this.body.material.opacity = 0.55;
   }
 
-  update(dt, onShootPlayer) {
+  update(dt, onShootPlayer, worldCollision = null) {
     if (!this.alive) return;
+
+    if (this._spawnDelay > 0) {
+      this._spawnDelay -= dt;
+      // Still visible while waiting — they just hold, then start walking
+      if (this._spawnDelay > 0) {
+        const player = this.playerRef();
+        if (player) {
+          const face = new THREE.Vector3().subVectors(player.position, this.position);
+          face.y = 0;
+          if (face.lengthSq() > 0) {
+            this.root.rotation.y = Math.atan2(face.x, face.z);
+          }
+        }
+        return;
+      }
+    }
 
     if (this.flashT > 0) {
       this.flashT -= dt;
       if (this.flashT <= 0) {
-        this.body.material.color.setHex(0x5a2e2e);
+        this.body.material.color.setHex(this.baseColor);
       }
     }
 
@@ -94,14 +121,30 @@ export class Enemy {
       this.root.rotation.y = yaw;
     }
 
-    if (dist < this.alertRange) {
-      this.state = dist < this.shootRange ? STATE.Shoot : STATE.Alert;
-    } else if (this.state !== STATE.Idle) {
+    // Slow advance toward player (no teleport)
+    if (this.advanceEnabled && this.moveSpeed > 0 && dist > this.holdDistance) {
+      this.state = STATE.Advance;
+      const step = Math.min(this.moveSpeed * dt, dist - this.holdDistance);
+      const nextX = this.root.position.x + toPlayer.x * step;
+      const nextZ = this.root.position.z + toPlayer.z * step;
+      const resolved = worldCollision
+        ? worldCollision.resolveCircleXZ(nextX, nextZ, 0.4)
+        : { x: nextX, z: nextZ };
+      this.root.position.x = resolved.x;
+      this.root.position.z = resolved.z;
+    } else if (dist < this.shootRange) {
+      this.state = STATE.Shoot;
+    } else if (dist < this.alertRange) {
+      this.state = STATE.Alert;
+    } else if (!this.advanceEnabled) {
       this.state = STATE.Idle;
     }
 
     this.shootCooldown = Math.max(0, this.shootCooldown - dt);
-    if (this.state === STATE.Shoot && this.shootCooldown <= 0) {
+    const canShoot =
+      this.state === STATE.Shoot ||
+      (this.advanceEnabled && dist <= this.shootRange);
+    if (canShoot && this.shootCooldown <= 0 && dist <= this.shootRange) {
       this.shootCooldown = this.fireInterval;
       onShootPlayer?.(this, toPlayer);
     }
@@ -122,6 +165,35 @@ export function spawnEnemyWave(scene, playerRef, count = 5) {
     const [x, z] = spots[i % spots.length];
     const jitter = (Math.random() - 0.5) * 1.5;
     enemies.push(new Enemy(scene, new THREE.Vector3(x + jitter, 0, z + jitter), playerRef));
+  }
+  return enemies;
+}
+
+/**
+ * Spawn former allies south of the base (player entry direction)
+ * and let them walk in slowly.
+ */
+export function spawnBetrayerSquad(scene, playerRef, entryHintPos) {
+  const enemies = [];
+  // Entry corridor is from the south (larger Z → smaller Z).
+  const baseZ = Math.min(entryHintPos?.z ?? -30, -28) + 8;
+  const lanes = [-5.5, -3, -0.5, 2, 4.5, 7];
+  for (let i = 0; i < lanes.length; i++) {
+    const x = lanes[i] + (Math.random() - 0.5) * 0.8;
+    const z = baseZ + i * 1.4 + Math.random() * 1.2;
+    const e = new Enemy(scene, new THREE.Vector3(x, 0, z), playerRef);
+    e.setTeamLook(0x2f4a3a);
+    e.maxHp = 45;
+    e.hp = 45;
+    e.alertRange = 32;
+    e.shootRange = 18;
+    e.fireInterval = 1.05;
+    e.moveSpeed = 1.55 + Math.random() * 0.35;
+    e.advanceEnabled = true;
+    e.holdDistance = 6.5 + Math.random() * 1.5;
+    // Stagger start so the line walks in as a squad, not a teleport dump
+    e._spawnDelay = i * 0.45;
+    enemies.push(e);
   }
   return enemies;
 }

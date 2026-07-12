@@ -3,26 +3,32 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>诡异弃子 — Phase 1 Combat Arena</title>
+    <title>诡异弃子 — 第一关 · 三幕</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
     <div id="crosshair"></div>
     <div id="hud">
-      <div class="row title"><strong>Phase 1</strong> · 战斗测试关</div>
-      <div class="row">状态：<span id="phase">Explore</span></div>
+      <div class="row title"><strong>Phase 2</strong> · 第一关三幕</div>
+      <div class="row">幕：<span id="phase">Explore</span></div>
+      <div class="row">目标：<span id="objective">…</span></div>
       <div class="row">HP <span id="hp-bar"><i id="hp-fill"></i></span> <span id="hp-text">100</span></div>
       <div class="row">弹药 <span id="ammo">30 / ∞</span></div>
-      <div class="row">敌人 <span id="enemies">0</span></div>
-      <div class="row hint">WASD 移动 · 鼠标瞄准 · 左键射击 · E 掩体</div>
+      <div class="row" id="enemies-row">敌对 <span id="enemies">0</span></div>
+      <div class="row hint">WASD · 鼠标瞄准 · 左键射击 · E 掩体 · T 回话（损坏）</div>
+      <div class="row hint"><a href="./arena.html">阶段1战斗场</a></div>
       <div class="row" id="api">API: …</div>
       <div class="row msg" id="msg"></div>
     </div>
+    <div id="radio" class="idle">
+      <div class="radio-tag">对讲机 · 仅接收</div>
+      <div id="radio-line">频道静默 · 只能接收</div>
+    </div>
     <div id="hit-vignette"></div>
     <div id="win-overlay" class="hidden">
-      <h1>清剿完成</h1>
-      <p>阶段 1 验收通过 · LevelState → Win</p>
-      <button id="restart">再来一波</button>
+      <h1>第一关完成</h1>
+      <p>异象 → 空巢狙击 → 叛变清剿 · LevelState → Win</p>
+      <button id="restart">重新潜入</button>
     </div>
     <script type="importmap">
       {

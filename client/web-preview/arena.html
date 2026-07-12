@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>诡异弃子 — Phase 1 Combat Arena</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div id="crosshair"></div>
+    <div id="hud">
+      <div class="row title"><strong>Phase 1</strong> · 战斗测试关</div>
+      <div class="row">状态：<span id="phase">Explore</span></div>
+      <div class="row">目标：<span id="objective">肃清测试区</span></div>
+      <div class="row">HP <span id="hp-bar"><i id="hp-fill"></i></span> <span id="hp-text">100</span></div>
+      <div class="row">弹药 <span id="ammo">30 / ∞</span></div>
+      <div class="row" id="enemies-row">敌人 <span id="enemies">0</span></div>
+      <div class="row hint">WASD · 鼠标瞄准 · 左键射击 · E 掩体</div>
+      <div class="row hint"><a href="./index.html">返回第一关</a></div>
+      <div class="row" id="api">API: …</div>
+      <div class="row msg" id="msg"></div>
+    </div>
+    <div id="radio" class="idle hidden-radio">
+      <div class="radio-tag">对讲机</div>
+      <div id="radio-line"></div>
+    </div>
+    <div id="hit-vignette"></div>
+    <div id="win-overlay" class="hidden">
+      <h1>清剿完成</h1>
+      <p>阶段 1 验收通过 · LevelState → Win</p>
+      <button id="restart">再来一波</button>
+    </div>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.170.0/build/three.module.js"
+        }
+      }
+    </script>
+    <script type="module" src="./src/arena.js"></script>
+  </body>
+</html>

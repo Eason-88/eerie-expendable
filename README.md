@@ -31,7 +31,8 @@ python -m http.server 5173
 ```
 
 打开：http://127.0.0.1:5173  
-阶段 1：WASD + 鼠标瞄准射击，E 掩体，清空 5 名敌人即胜利。
+- **阶段 2 第一关三幕**（默认）：异象 → 狙击 → 叛变  
+- 阶段 1 战斗场：http://127.0.0.1:5173/arena.html  
 
 正式 Cocos 工程步骤见 [`client/README.md`](client/README.md)。
 
@@ -40,6 +41,7 @@ python -m http.server 5173
 - [开发计划](docs/开发计划.md)
 - [阶段 0 验收说明](docs/阶段0-验收说明.md)
 - [阶段 1 验收说明](docs/阶段1-验收说明.md)
+- [阶段 2 验收说明](docs/阶段2-验收说明.md)
 
 ## 视觉参考
 

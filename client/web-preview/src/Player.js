@@ -119,7 +119,7 @@ export class Player {
     hud.message("换弹…");
   }
 
-  update(dt, covers, hud, combat) {
+  update(dt, covers, hud, combat, worldCollision = null) {
     this.fireCooldown = Math.max(0, this.fireCooldown - dt);
     if (this.reloadTime > 0) {
       this.reloadTime -= dt;
@@ -162,9 +162,13 @@ export class Player {
       if (this.keys.has("KeyD") || this.keys.has("ArrowRight")) this._wish.add(this._right);
       if (this._wish.lengthSq() > 0) {
         this._wish.normalize().multiplyScalar(this.moveSpeed * dt);
-        this.root.position.add(this._wish);
-        this.root.position.x = THREE.MathUtils.clamp(this.root.position.x, -28, 28);
-        this.root.position.z = THREE.MathUtils.clamp(this.root.position.z, -28, 28);
+        const nextX = this.root.position.x + this._wish.x;
+        const nextZ = this.root.position.z + this._wish.z;
+        const resolved = worldCollision
+          ? worldCollision.resolveCircleXZ(nextX, nextZ, 0.42)
+          : { x: nextX, z: nextZ };
+        this.root.position.x = THREE.MathUtils.clamp(resolved.x, -40, 40);
+        this.root.position.z = THREE.MathUtils.clamp(resolved.z, -55, 18);
       }
     } else if (this.cover) {
       // slight peek offset with A/D while in cover

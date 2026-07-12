@@ -76,7 +76,20 @@ export class CombatSystem {
     }
   }
 
-  update(dt, enemies, player, coverMeshes, hud) {
+  /**
+   * @param {import('./Collision.js').WorldCollision | null} worldCollision
+   */
+  update(
+    dt,
+    enemies,
+    player,
+    coverMeshes,
+    hud,
+    horror = null,
+    radio = null,
+    solidMeshes = [],
+    worldCollision = null
+  ) {
     this.bulletPool.forEachActive((bullet) => {
       bullet.life -= dt;
       if (bullet.life <= 0) {
@@ -95,16 +108,37 @@ export class CombatSystem {
       this.raycaster.set(prev, dir);
       this.raycaster.far = dist + 0.05;
 
-      const coverHits = this.raycaster.intersectObjects(coverMeshes, false);
-      if (coverHits.length && coverHits[0].distance <= dist + 0.05) {
-        this.spawnDecal(
-          coverHits[0].point,
-          coverHits[0].face?.normal ?? new THREE.Vector3(0, 0, 1)
-        );
-        this.spawnSparks(coverHits[0].point);
+      // Anomalies first (pig on roof / scarecrows)
+      if (bullet.fromPlayer && horror?.tryHitFromRaycaster(this.raycaster, radio, hud)) {
+        this.spawnSparks(prev.clone().addScaledVector(dir, dist * 0.5));
         bullet.mesh.visible = false;
         this.bulletPool.release(bullet);
         return;
+      }
+
+      // Buildings via AABB (reliable) then leftover cover meshes
+      const aabbHit = worldCollision?.raycast(prev, dir, dist + 0.05);
+      if (aabbHit) {
+        this.spawnDecal(aabbHit.point, aabbHit.normal);
+        this.spawnSparks(aabbHit.point);
+        bullet.mesh.visible = false;
+        this.bulletPool.release(bullet);
+        return;
+      }
+
+      if (coverMeshes.length) {
+        for (const m of coverMeshes) m.updateMatrixWorld?.(true);
+        const coverHits = this.raycaster.intersectObjects(coverMeshes, false);
+        if (coverHits.length && coverHits[0].distance <= dist + 0.05) {
+          this.spawnDecal(
+            coverHits[0].point,
+            coverHits[0].face?.normal ?? new THREE.Vector3(0, 0, 1)
+          );
+          this.spawnSparks(coverHits[0].point);
+          bullet.mesh.visible = false;
+          this.bulletPool.release(bullet);
+          return;
+        }
       }
 
       if (bullet.fromPlayer) {

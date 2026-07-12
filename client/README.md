@@ -6,24 +6,19 @@
 
 | 阶段 | 内容 | 路径 |
 |------|------|------|
-| 0 | 跟拍相机 / 平台适配 / Boot | `assets/scripts/` |
-| 1 | 战斗测试关（可通关） | `web-preview/` |
-| 1 | Cocos 战斗脚本脚手架 | `assets/scripts/combat|level|ui|core` |
+| 0 | 跟拍 / 平台适配 / Boot | `assets/scripts/` |
+| 1 | 战斗测试关 | `web-preview/arena.html` |
+| 2 | 第一关三幕战役 | `web-preview/index.html` |
+| 2 | 叙事 / 异象 / 狙击导演脚手架 | `narrative/` `horror/` `level/` |
 
-> `web-preview` 用于在未安装 Cocos 时验收手感；正式客户端仍以 Cocos 为准。
-
-## 阶段 1 快速玩
+## 快速玩
 
 ```powershell
 cd client\web-preview
 python -m http.server 5173
 ```
 
-打开 http://127.0.0.1:5173 — 详见 [`docs/阶段1-验收说明.md`](../docs/阶段1-验收说明.md)。
+- 第一关：http://127.0.0.1:5173  
+- 战斗场：http://127.0.0.1:5173/arena.html  
 
-## Cocos 正式工程
-
-1. 安装 Cocos Creator 3.8+。
-2. 新建 3D 项目到本目录（或拷入 `assets/scripts`）。
-3. 挂载：`PlayerMotor`、`WeaponController`、`CoverUser`、`EnemyAI`、`LevelStateMachine`、`CombatHud`、`ThirdPersonCamera`、`BootStrap`。
-4. Preview in Browser。
+详见 `docs/阶段2-验收说明.md`。
