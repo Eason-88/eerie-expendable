@@ -20,6 +20,11 @@ export class Hud {
     if (this.apiEl) this.apiEl.textContent = text;
   }
 
+  setSync(text) {
+    const el = document.getElementById("sync");
+    if (el) el.textContent = text;
+  }
+
   setPhase(phase) {
     if (this.phaseEl) this.phaseEl.textContent = phase;
   }

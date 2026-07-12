@@ -2,7 +2,7 @@ import type { PlatformAdapter } from './types';
 
 /**
  * WeChat mini-game adapter stub.
- * Real wx APIs will be wired when building with WeChat toolchain (phase 3).
+ * Phase 3: wx.login → POST /api/v1/auth/wechat with code.
  */
 export class WechatPlatform implements PlatformAdapter {
   readonly kind = 'wechat' as const;
@@ -13,17 +13,23 @@ export class WechatPlatform implements PlatformAdapter {
   }
 
   storageGet(key: string): string | null {
-    // wx.getStorageSync(key)
+    // return wx.getStorageSync(key) ?? null;
     return null;
   }
 
   storageSet(key: string, value: string): void {
-    // wx.setStorageSync(key, value)
+    // wx.setStorageSync(key, value);
     void key;
     void value;
   }
 
   vibrateShort(): void {
     // wx.vibrateShort({})
+  }
+
+  /** Returns wx.login code for backend exchange. */
+  async loginCode(): Promise<string> {
+    // return await new Promise((resolve, reject) => wx.login({ success: (r) => resolve(r.code), fail: reject }));
+    return 'wx_mock_code';
   }
 }

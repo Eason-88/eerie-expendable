@@ -7,11 +7,15 @@
 ```powershell
 cd server
 .\venv\Scripts\Activate.ps1
+pip install -e ".[dev]"
 uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
 - 探活：http://127.0.0.1:8000/health  
 - Swagger：http://127.0.0.1:8000/docs  
+- 数据库：`data/eerie.db`（自动创建）
+
+复制 `.env.example` 为 `.env` 可改 JWT / CDN / 微信密钥。
 
 ## 测试 / 规范
 

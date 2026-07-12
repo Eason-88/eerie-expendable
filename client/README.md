@@ -9,7 +9,8 @@
 | 0 | 跟拍 / 平台适配 / Boot | `assets/scripts/` |
 | 1 | 战斗测试关 | `web-preview/arena.html` |
 | 2 | 第一关三幕战役 | `web-preview/index.html` |
-| 2 | 叙事 / 异象 / 狙击导演脚手架 | `narrative/` `horror/` `level/` |
+| 3 | 云存档 / 登录 / 远程配置 | `SaveService` + FastAPI |
+| 2–3 | 叙事 / 异象 / 存档脚手架 | `narrative/` `horror/` `save/` `net/` |
 
 ## 快速玩
 

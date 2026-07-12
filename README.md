@@ -23,16 +23,21 @@ uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 
 探活：http://127.0.0.1:8000/health
 
-**伪 3D / 战斗预览（阶段 0–1）**
+**伪 3D / 战斗 / 战役预览（阶段 0–3）**
 
 ```powershell
+# 终端 1：后端
+cd server
+.\venv\Scripts\Activate.ps1
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+
+# 终端 2：前端预览
 cd client\web-preview
 python -m http.server 5173
 ```
 
 打开：http://127.0.0.1:5173  
-- **阶段 2 第一关三幕**（默认）：异象 → 狙击 → 叛变  
-- 阶段 1 战斗场：http://127.0.0.1:5173/arena.html  
+HUD「存档」行可看到云同步状态。
 
 正式 Cocos 工程步骤见 [`client/README.md`](client/README.md)。
 
@@ -42,6 +47,7 @@ python -m http.server 5173
 - [阶段 0 验收说明](docs/阶段0-验收说明.md)
 - [阶段 1 验收说明](docs/阶段1-验收说明.md)
 - [阶段 2 验收说明](docs/阶段2-验收说明.md)
+- [阶段 3 验收说明](docs/阶段3-验收说明.md)
 
 ## 视觉参考
 

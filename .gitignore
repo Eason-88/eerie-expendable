@@ -17,6 +17,11 @@ Desktop.ini
 *.pem
 credentials.json
 
+# Server runtime data
+server/data/
+server/tests/test_eerie.db
+server/tests/*.db
+
 # Python / FastAPI
 server/.venv/
 server/venv/

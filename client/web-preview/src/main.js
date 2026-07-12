@@ -9,6 +9,7 @@ import { Radio } from "./Radio.js";
 import { HorrorEvents, HORROR_CONFIG } from "./Horror.js";
 import { SniperEncounter } from "./Sniper.js";
 import { WorldCollision } from "./Collision.js";
+import { SaveService } from "./SaveService.js";
 
 const hud = new Hud();
 const level = new LevelStateMachine((phase) => {
@@ -21,10 +22,49 @@ const radio = new Radio({
   onBlockedTransmit: (msg) => hud.message(msg),
 });
 
-fetch("http://127.0.0.1:8000/health")
-  .then((r) => r.json())
-  .then((data) => hud.setApi(`API: ${data.status} · ${data.app}`))
-  .catch(() => hud.setApi("API: offline（可选）"));
+const saveService = new SaveService("http://127.0.0.1:8000");
+
+async function persistCheckpoint(checkpoint, dataPatch = {}) {
+  if (!saveService.user && !saveService.status) {
+    // still booting
+  }
+  try {
+    if (!saveService.user) {
+      saveService.patchLocal(checkpoint, dataPatch);
+      hud.setSync(`本地 ${checkpoint} · 等待登录`);
+      return;
+    }
+    saveService.patchLocal(checkpoint, dataPatch);
+    hud.setSync(`本地 ${checkpoint} · 同步中…`);
+    const result = await saveService.push();
+    if (result.conflict) {
+      hud.setSync(`冲突已采用云端 v${saveService.save.version}`);
+      hud.message("检测到云端更新，已合并服务器存档");
+    } else {
+      hud.setSync(`已同步 v${saveService.save.version} · ${checkpoint}`);
+    }
+  } catch {
+    hud.setSync(`本地已存 ${checkpoint} · 云端离线`);
+  }
+}
+
+saveService
+  .bootstrap()
+  .then((save) => {
+    hud.setApi(
+      `API: online · ${saveService.user?.display_name ?? "玩家"} · CDN ${
+        saveService.remoteConfig?.cdnBaseUrl ? "已配置" : "—"
+      }`
+    );
+    hud.setSync(`云存档 v${save.version} · ${save.checkpoint}`);
+    if (save.checkpoint === "win" || save.checkpoint === "cleared") {
+      hud.message("检测到通关存档，可继续游玩或重新潜入");
+    }
+  })
+  .catch(() => {
+    hud.setApi("API: offline · 使用本地存档");
+    hud.setSync("本地模式");
+  });
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x5a6b60);
@@ -189,6 +229,7 @@ function beginBetrayal() {
   hud.setObjective("友军从南侧缓慢推进 · 存活并清剿");
   hud.message("支援小队正从你来时的方向压过来！");
   spawnBetrayers();
+  void persistCheckpoint("betrayal");
 }
 
 function startCampaign() {
@@ -219,8 +260,9 @@ function startCampaign() {
   hud.setObjective("调查并驱散林中异象（开枪 / 靠近）");
   hud.setEnemies(0, 0);
   hud.setRadio(null);
-  hud.message("列车顶与稻草人会一直在 · 开枪或靠近才能驱散");
+  hud.message("对讲机只能接收 · 云存档将在检查点自动同步");
   hud.showWin(false);
+  void persistCheckpoint("intro");
 }
 
 startCampaign();
@@ -280,11 +322,16 @@ function animate() {
           "黑鹰7号？传感器尖峰消失了。继续前进，禁止擅自脱离。",
           4
         );
+        void persistCheckpoint("explore_cleared", {
+          pigCleared: true,
+          ritualCleared: true,
+        });
       }
       if (player.position.z < -18 && (horror.bothCleared || player.position.z < -24)) {
         level.set(LevelPhase.Sniper);
         sniper.start(radio, hud);
         hud.setObjective("利用掩体前进，抵达狙击位置");
+        void persistCheckpoint("sniper");
       }
     }
 
@@ -299,6 +346,7 @@ function animate() {
           4
         );
         hud.setObjective("支援即将抵达……");
+        void persistCheckpoint("empty_nest");
         betrayalDelayId = window.setTimeout(() => {
           if (level.phase === LevelPhase.Sniper) beginBetrayal();
         }, 3500);
@@ -320,6 +368,7 @@ function animate() {
         );
         hud.setObjective("第一关完成");
         hud.message("叛变清剿完成");
+        void persistCheckpoint("win", { cleared: true });
       }
     }
 

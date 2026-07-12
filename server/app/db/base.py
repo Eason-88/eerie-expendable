@@ -1,1 +1,5 @@
-"""Database layer — SQLAlchemy session arrives with cloud saves (phase 3)."""
+from sqlalchemy.orm import DeclarativeBase
+
+
+class Base(DeclarativeBase):
+    pass

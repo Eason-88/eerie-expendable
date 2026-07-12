@@ -8,7 +8,7 @@ include = ["app*"]
 
 [project]
 name = "eerie-expendable"
-version = "0.1.0"
+version = "0.3.0"
 description = "诡异弃子 / Eerie Expendable — FastAPI backend"
 requires-python = ">=3.11"
 dependencies = [
@@ -16,6 +16,8 @@ dependencies = [
     "uvicorn[standard]>=0.32.0",
     "pydantic-settings>=2.6.0",
     "python-dotenv>=1.0.0",
+    "sqlalchemy>=2.0.36",
+    "PyJWT>=2.9.0",
 ]
 
 [project.optional-dependencies]

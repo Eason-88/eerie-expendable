@@ -1,7 +1,9 @@
 from fastapi.testclient import TestClient
 
+from app.db.session import init_db
 from app.main import app
 
+init_db()
 client = TestClient(app)
 
 
@@ -19,3 +21,4 @@ def test_client_config() -> None:
     payload = response.json()
     assert payload["schemaVersion"] == 1
     assert payload["radioCanTransmit"] is False
+    assert payload["features"]["cloudSave"] is True
